@@ -674,4 +674,87 @@ class ReportService
             ],
         ];
     }
+
+    /**
+     * Generate Tax Report for PPh Final UMKM PP 55/2022 (0.5% dari Omset Bruto) & Rekapitulasi SPT Tahunan
+     */
+    public function getTaxFinalReport(int $companyId, int $year): array
+    {
+        $monthsName = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+
+        $monthlyData = [];
+        $totalGrossRevenue = 0.00;
+        $totalTaxPayable = 0.00;
+        $cumulativeTurnover = 0.00;
+        $taxRate = 0.005; // 0.5% (PP 55 Tahun 2022 / PP 23 Tahun 2018)
+
+        // Query revenue lines across the 12 months of the year
+        for ($m = 1; $m <= 12; $m++) {
+            $startDate = sprintf('%04d-%02d-01', $year, $m);
+            $endDate = date('Y-m-t', strtotime($startDate));
+
+            $monthlyRevenue = (float)JournalLine::join('journal_entries', 'journal_lines.journal_entry_id', '=', 'journal_entries.id')
+                ->join('accounts', 'journal_lines.account_id', '=', 'accounts.id')
+                ->where('journal_entries.company_id', $companyId)
+                ->where('accounts.group', 'Pendapatan')
+                ->whereBetween('journal_entries.entry_date', [$startDate, $endDate])
+                ->select(DB::raw('SUM(journal_lines.credit - journal_lines.debit) as net_revenue'))
+                ->value('net_revenue') ?? 0.00;
+
+            if ($monthlyRevenue < 0) {
+                $monthlyRevenue = 0.00;
+            }
+
+            $cumulativeTurnover += $monthlyRevenue;
+            $taxAmount = round($monthlyRevenue * $taxRate, 2);
+
+            $totalGrossRevenue += $monthlyRevenue;
+            $totalTaxPayable += $taxAmount;
+
+            $monthlyData[] = [
+                'month_number' => $m,
+                'month_name' => $monthsName[$m],
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'gross_revenue' => $monthlyRevenue,
+                'cumulative_revenue' => $cumulativeTurnover,
+                'tax_rate_percent' => 0.5,
+                'tax_payable' => $taxAmount,
+                'kap' => '411128',
+                'kjs' => '420',
+                'due_date' => date('Y-m-15', strtotime("+1 month", strtotime($startDate))),
+            ];
+        }
+
+        $averageMonthlyRevenue = $totalGrossRevenue / 12;
+
+        return [
+            'tax_year' => $year,
+            'regulation' => 'PP No. 55 Tahun 2022 / PP No. 23 Tahun 2018',
+            'tax_type' => 'PPh Final Usaha UMKM (0.5% dari Peredaran Bruto)',
+            'tax_rate_percent' => 0.5,
+            'kap' => '411128',
+            'kjs' => '420',
+            'summary' => [
+                'total_gross_revenue' => $totalGrossRevenue,
+                'total_tax_payable' => $totalTaxPayable,
+                'average_monthly_revenue' => $averageMonthlyRevenue,
+                'active_months_count' => count(array_filter($monthlyData, fn($i) => $i['gross_revenue'] > 0)),
+            ],
+            'monthly_records' => $monthlyData,
+        ];
+    }
 }

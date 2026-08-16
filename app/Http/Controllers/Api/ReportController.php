@@ -87,4 +87,17 @@ class ReportController extends Controller
 
         return response()->json($report);
     }
+
+    /**
+     * Laporan Pajak PPh Final UMKM & Rekapitulasi SPT Tahunan (PP 55/2022)
+     */
+    public function taxFinalReport(Request $request)
+    {
+        $companyId = $request->user()->company_id;
+        $year = (int)($request->input('year') ?: date('Y'));
+
+        $report = $this->reportService->getTaxFinalReport($companyId, $year);
+
+        return response()->json($report);
+    }
 }

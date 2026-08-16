@@ -59,9 +59,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['index', 'store', 'show']);
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'addPayment']);
 
-    // Financial Reports (Laporan Keuangan)
+    // Financial Reports (Laporan Keuangan & Pajak)
     Route::get('/reports/income-statement', [ReportController::class, 'incomeStatement']);
     Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet']);
     Route::get('/reports/general-ledger', [ReportController::class, 'generalLedger']);
     Route::get('/reports/cash-flow', [ReportController::class, 'cashFlowStatement']);
+    Route::get('/reports/tax-final', [ReportController::class, 'taxFinalReport']);
 });

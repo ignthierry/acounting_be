@@ -25,7 +25,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth & Profile
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
+    Route::get('/auth/team', [AuthController::class, 'getTeam']);
     Route::post('/auth/invite', [AuthController::class, 'invite']);
+    Route::delete('/auth/team/{id}', [AuthController::class, 'deleteTeamMember']);
+
+    // Company Settings
+    Route::put('/company', [AuthController::class, 'updateCompany']);
 
     // Dashboard Overview
     Route::get('/dashboard/summary', [ReportController::class, 'dashboard']);
@@ -56,4 +62,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Financial Reports (Laporan Keuangan)
     Route::get('/reports/income-statement', [ReportController::class, 'incomeStatement']);
     Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet']);
+    Route::get('/reports/general-ledger', [ReportController::class, 'generalLedger']);
+    Route::get('/reports/cash-flow', [ReportController::class, 'cashFlowStatement']);
 });

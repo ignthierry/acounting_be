@@ -53,4 +53,38 @@ class ReportController extends Controller
 
         return response()->json($summary);
     }
+
+    /**
+     * Buku Besar (General Ledger)
+     */
+    public function generalLedger(Request $request)
+    {
+        $companyId = $request->user()->company_id;
+        $accountId = $request->input('account_id');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $report = $this->reportService->getGeneralLedger(
+            $companyId,
+            $accountId ? (int)$accountId : null,
+            $startDate,
+            $endDate
+        );
+
+        return response()->json($report);
+    }
+
+    /**
+     * Laporan Arus Kas (Cash Flow Statement)
+     */
+    public function cashFlowStatement(Request $request)
+    {
+        $companyId = $request->user()->company_id;
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $report = $this->reportService->getCashFlowStatement($companyId, $startDate, $endDate);
+
+        return response()->json($report);
+    }
 }

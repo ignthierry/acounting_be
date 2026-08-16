@@ -135,6 +135,50 @@ class AuthController extends Controller
     }
 
     /**
+     * Update Company Profile
+     */
+    public function updateCompany(Request $request)
+    {
+        $currentUser = $request->user();
+
+        if ($currentUser->role !== 'owner' && $currentUser->role !== 'admin') {
+            return response()->json(['message' => 'Hanya Owner atau Admin yang dapat memperbarui data usaha.'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string',
+        ]);
+
+        $company = Company::findOrFail($currentUser->company_id);
+        $company->update($validated);
+
+        return response()->json([
+            'message' => 'Profil usaha berhasil diperbarui.',
+            'company' => $company,
+        ]);
+    }
+
+    /**
+     * Get Team Members in current company
+     */
+    public function getTeam(Request $request)
+    {
+        $currentUser = $request->user();
+
+        $users = User::where('company_id', $currentUser->company_id)
+            ->select('id', 'company_id', 'name', 'email', 'role', 'created_at')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return response()->json([
+            'data' => $users,
+        ]);
+    }
+
+    /**
      * Invite staff user (Owner/Admin only)
      */
     public function invite(Request $request)
@@ -164,5 +208,72 @@ class AuthController extends Controller
             'message' => 'Anggota tim berhasil ditambahkan.',
             'user' => $user,
         ], 201);
+    }
+
+    /**
+     * Remove / Deactivate team member (Owner only)
+     */
+    public function deleteTeamMember(Request $request, $id)
+    {
+        $currentUser = $request->user();
+
+        if ($currentUser->role !== 'owner') {
+            return response()->json(['message' => 'Hanya Pemilik (Owner) yang dapat menghapus anggota tim.'], 403);
+        }
+
+        if ((int)$currentUser->id === (int)$id) {
+            return response()->json(['message' => 'Anda tidak dapat menghapus akun Anda sendiri.'], 422);
+        }
+
+        $targetUser = User::where('company_id', $currentUser->company_id)->findOrFail($id);
+
+        if ($targetUser->role === 'owner') {
+            return response()->json(['message' => 'Tidak dapat menghapus sesama akun Owner.'], 422);
+        }
+
+        $targetUser->tokens()->delete();
+        $targetUser->delete();
+
+        return response()->json([
+            'message' => 'Anggota tim berhasil dihapus.',
+        ]);
+    }
+
+    /**
+     * Update Current User Profile & Password
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'current_password' => 'nullable|required_with:new_password|string',
+            'new_password' => 'nullable|string|min:6',
+        ]);
+
+        if (!empty($validated['new_password'])) {
+            if (!Hash::check($validated['current_password'], $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => ['Kata sandi saat ini tidak cocok.'],
+                ]);
+            }
+            $user->password = Hash::make($validated['new_password']);
+        }
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profil Anda berhasil diperbarui.',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+        ]);
     }
 }

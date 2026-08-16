@@ -13,9 +13,11 @@ class Customer extends Model
     protected $fillable = [
         'company_id',
         'name',
+        'type',
         'email',
         'phone',
         'address',
+        'notes',
     ];
 
     public function invoices()

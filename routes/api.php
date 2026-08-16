@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public Authentication Endpoints
 Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
 
 // Protected Endpoints (Requires Sanctum Token)
 Route::middleware('auth:sanctum')->group(function () {

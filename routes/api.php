@@ -40,7 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('accounts', AccountController::class);
 
     // General Journal (Jurnal Umum)
-    Route::apiResource('journals', JournalController::class)->only(['index', 'store', 'show']);
+    Route::apiResource('journals', JournalController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
 
     // Cash, Bank, Expenses & Financing (Kas & Pembiayaan)
     Route::get('/cash-transactions', [CashTransactionController::class, 'index']);

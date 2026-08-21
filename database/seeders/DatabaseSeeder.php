@@ -173,7 +173,7 @@ class DatabaseSeeder extends Seeder
             'unit' => 'Sak',
             'selling_price' => 78000,
             'cost_price' => 68000,
-            'stock_quantity' => 80,
+            'stock_quantity' => 100,
             'min_stock_alert' => 20,
         ]);
 
@@ -184,7 +184,7 @@ class DatabaseSeeder extends Seeder
             'unit' => 'Pouch',
             'selling_price' => 35000,
             'cost_price' => 31000,
-            'stock_quantity' => 65,
+            'stock_quantity' => 120,
             'min_stock_alert' => 15,
         ]);
 
@@ -195,7 +195,7 @@ class DatabaseSeeder extends Seeder
             'unit' => 'Kg',
             'selling_price' => 16500,
             'cost_price' => 14500,
-            'stock_quantity' => 120,
+            'stock_quantity' => 300,
             'min_stock_alert' => 25,
         ]);
 
@@ -211,10 +211,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Initial inventory purchase journal:
-        // Total Stock Value = (80 * 68000) + (65 * 31000) + (120 * 14500) + (70 * 11000)
-        // 5.440.000 + 2.015.000 + 1.740.000 + 770.000 = 9.965.000
-        $initialInventoryCost = 9965000;
-        $journalService->createEntry(
+        // Total Stock Value = (100 * 68000) + (120 * 31000) + (300 * 14500) + (70 * 11000)
+        // 6.800.000 + 3.720.000 + 4.350.000 + 770.000 = 15.640.000
+        $initialInventoryCost = 15640000;
+        $jStock = $journalService->createEntry(
             $company->id,
             '2026-08-02',
             'Pembelian Stok Awal Produk Sembako dari PT Pangan Sejati Nusantara',
@@ -225,6 +225,27 @@ class DatabaseSeeder extends Seeder
             'stock',
             'PO-STK-001'
         );
+
+        // Stock movements for initial purchase (keeps product stock & ledger in sync)
+        $initialStock = [
+            ['product' => $p1, 'qty' => 100, 'unit' => 68000],
+            ['product' => $p2, 'qty' => 120, 'unit' => 31000],
+            ['product' => $p3, 'qty' => 300, 'unit' => 14500],
+            ['product' => $p4, 'qty' => 70, 'unit' => 11000],
+        ];
+        foreach ($initialStock as $is) {
+            StockMovement::create([
+                'company_id' => $company->id,
+                'product_id' => $is['product']->id,
+                'type' => 'purchase',
+                'quantity' => $is['qty'],
+                'unit_cost' => $is['unit'],
+                'total_cost' => $is['qty'] * $is['unit'],
+                'movement_date' => '2026-08-02',
+                'reference' => 'PO-STK-001',
+                'journal_entry_id' => $jStock->id,
+            ]);
+        }
 
         echo " - [8/9] Recording Expenses..." . PHP_EOL;
         // 8. Operating Expenses (Biaya Operasional)
@@ -376,6 +397,20 @@ class DatabaseSeeder extends Seeder
             'subtotal' => 4680000,
         ]);
 
+        // Decrease stock & record sale movement (keeps product stock & ledger in sync)
+        $p1->decrement('stock_quantity', 60);
+        StockMovement::create([
+            'company_id' => $company->id,
+            'product_id' => $p1->id,
+            'type' => 'sale',
+            'quantity' => 60,
+            'unit_cost' => 68000,
+            'total_cost' => $inv1Cogs,
+            'movement_date' => '2026-08-06',
+            'reference' => 'INV-202608-0001',
+            'journal_entry_id' => $jInv1->id,
+        ]);
+
         // Payment for Invoice 1 via Bank BCA
         $jPay1 = $journalService->createEntry(
             $company->id,
@@ -439,6 +474,20 @@ class DatabaseSeeder extends Seeder
             'quantity' => 90,
             'unit_price' => 35000,
             'subtotal' => 3150000,
+        ]);
+
+        // Decrease stock & record sale movement
+        $p2->decrement('stock_quantity', 90);
+        StockMovement::create([
+            'company_id' => $company->id,
+            'product_id' => $p2->id,
+            'type' => 'sale',
+            'quantity' => 90,
+            'unit_cost' => 31000,
+            'total_cost' => $inv2Cogs,
+            'movement_date' => '2026-08-08',
+            'reference' => 'INV-202608-0002',
+            'journal_entry_id' => $jInv2->id,
         ]);
 
         // Payment for Invoice 2 via Kas Tunai
@@ -506,6 +555,20 @@ class DatabaseSeeder extends Seeder
             'subtotal' => 4125000,
         ]);
 
+        // Decrease stock & record sale movement
+        $p3->decrement('stock_quantity', 250);
+        StockMovement::create([
+            'company_id' => $company->id,
+            'product_id' => $p3->id,
+            'type' => 'sale',
+            'quantity' => 250,
+            'unit_cost' => 14500,
+            'total_cost' => $inv3Cogs,
+            'movement_date' => '2026-08-11',
+            'reference' => 'INV-202608-0003',
+            'journal_entry_id' => $jInv3->id,
+        ]);
+
         // INVOICE 4: Resto Nusantara Rasa (Rp 1.740.000) - Status: JATUH TEMPO (Overdue)
         // 15 Sak Beras @ 78.000 = 1.170.000 + 15 Pouch Minyak @ 38.000 = 570.000 -> Total 1.740.000
         // COGS: (15 * 68.000) + (15 * 31.000) = 1.020.000 + 465.000 = 1.485.000
@@ -554,6 +617,32 @@ class DatabaseSeeder extends Seeder
             'quantity' => 15,
             'unit_price' => 38000,
             'subtotal' => 570000,
+        ]);
+
+        // Decrease stock & record sale movements for both items
+        $p1->decrement('stock_quantity', 15);
+        StockMovement::create([
+            'company_id' => $company->id,
+            'product_id' => $p1->id,
+            'type' => 'sale',
+            'quantity' => 15,
+            'unit_cost' => 68000,
+            'total_cost' => 15 * 68000,
+            'movement_date' => '2026-07-28',
+            'reference' => 'INV-202607-0089',
+            'journal_entry_id' => $jInv4->id,
+        ]);
+        $p2->decrement('stock_quantity', 15);
+        StockMovement::create([
+            'company_id' => $company->id,
+            'product_id' => $p2->id,
+            'type' => 'sale',
+            'quantity' => 15,
+            'unit_cost' => 31000,
+            'total_cost' => 15 * 31000,
+            'movement_date' => '2026-07-28',
+            'reference' => 'INV-202607-0089',
+            'journal_entry_id' => $jInv4->id,
         ]);
     }
 }

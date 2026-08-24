@@ -6,18 +6,12 @@ use App\Models\Account;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AccountingApiTest extends TestCase
 {
-    use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->seed();
-    }
+    use DatabaseTransactions;
 
     public function test_auth_login()
     {
